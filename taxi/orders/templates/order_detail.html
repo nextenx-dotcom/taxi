@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}Заказ #{{ order.id }} — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.detail-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 2rem; align-items: start; }
+.info-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.2rem; }
+.info-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 1rem; }
+.info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; gap: 1rem; }
+.info-row:last-child { border-bottom: none; }
+.info-row .lbl { color: var(--muted); flex-shrink: 0; }
+.info-row .val { font-weight: 500; text-align: right; }
+.driver-box { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(245,197,24,0.08); border: 1px solid rgba(245,197,24,0.2); border-radius: 10px; margin-bottom: 1rem; }
+.driver-ava { width: 48px; height: 48px; border-radius: 50%; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+.tl { display: flex; flex-direction: column; }
+.tl-step { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 0; }
+.tl-dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: var(--dark); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; color: var(--muted); }
+.tl-step.done .tl-dot { background: var(--success); border-color: var(--success); color: white; }
+.tl-step.active .tl-dot { background: var(--yellow); border-color: var(--yellow); color: var(--black); animation: pulse 1.5s infinite; }
+.tl-step.done .tl-lbl { color: var(--text); font-weight: 500; }
+.tl-step.active .tl-lbl { color: var(--yellow); font-weight: 600; }
+.tl-step.pending .tl-lbl { color: var(--muted); }
+.map-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: sticky; top: 80px; }
+#map { height: 450px; width: 100%; border-radius: 0; border: none; }
+.map-no-coords { height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 0.5rem; padding: 2rem; text-align: center; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,197,24,0.4)} 50%{box-shadow:0 0 0 8px rgba(245,197,24,0)} }
+@media(max-width:900px){ .detail-grid { grid-template-columns: 1fr; } .map-wrap { position: static; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:2px">Заказ <span style="color:var(--yellow)">#{{ order.id }}</span></h1>
+            <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+        </div>
+        <a href="{% url 'passenger_dashboard' %}" class="btn btn-ghost"> Назад</a>
+    </div>
+
+    <div class="detail-grid">
+        <div>
+            <div class="info-card">
+                <h3>Статус поездки</h3>
+                {% if order.status == 'cancelled' %}
+                    <div class="alert alert-error">Заказ отменён</div>
+                {% else %}
+                <div class="tl">
+                    <div class="tl-step done">
+                        <div class="tl-dot">✓</div>
+                        <div class="tl-lbl">Заказ создан</div>
+                    </div>
+                    {% if order.status == 'created' %}
+                    <div class="tl-step active">
+                        <div class="tl-dot">2</div>
+                        <div class="tl-lbl">Ищем водителя...</div>
+                    </div>
+                    {% else %}
+                    <div class="tl-step done">
+                        <div class="tl-dot">✓</div>
+                        <div class="tl-lbl">Водитель принял заказ</div>
+                    </div>
+                    {% endif %}
+                    {% if order.status == 'assigned' %}
+                    <div class="tl-step active">
+                        <div class="tl-dot"></div>
+                        <div class="tl-lbl">Ждём выезда водителя</div>
+                    </div>
+                    {% elif order.status in 'on_the_way,completed' %}
+                    <div class="tl-step done">
+                        <div class="tl-dot">✓</div>
+                        <div class="tl-lbl">Водитель выехал</div>
+                    </div>
+                    {% else %}
+                    <div class="tl-step pending">
+                        <div class="tl-dot">3</div>
+                        <div class="tl-lbl">Водитель выехал</div>
+                    </div>
+                    {% endif %}
+                    {% if order.status == 'on_the_way' %}
+                    <div class="tl-step active">
+                        <div class="tl-dot"></div>
+                        <div class="tl-lbl">Поездка в процессе</div>
+                    </div>
+                    {% elif order.status == 'completed' %}
+                    <div class="tl-step done">
+                        <div class="tl-dot">✓</div>
+                        <div class="tl-lbl">Поездка завершена</div>
+                    </div>
+                    {% else %}
+                    <div class="tl-step pending">
+                        <div class="tl-dot">4</div>
+                        <div class="tl-lbl">Поездка завершена</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="info-card">
+                <h3>Маршрут</h3>
+                <div class="info-row"><span class="lbl"> Откуда</span><span class="val">{{ order.pickup_address }}</span></div>
+                <div class="info-row"><span class="lbl"> Куда</span><span class="val">{{ order.destination_address }}</span></div>
+                <div class="info-row">
+                    <span class="lbl"> Стоимость</span>
+                    <span class="val text-yellow" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem">
+                        {% if order.price %}{{ order.price }} ₽{% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="info-row"><span class="lbl"> Создан</span><span class="val">{{ order.created_at|date:"d.m.Y H:i" }}</span></div>
+                {% if order.comment %}<div class="info-row"><span class="lbl"></span><span class="val">{{ order.comment }}</span></div>{% endif %}
+            </div>
+
+            {% if order.driver %}
+            <div class="info-card">
+                <h3>Ваш водитель</h3>
+                <div class="driver-box">
+                    <div class="driver-ava"></div>
+                    <div>
+                        <div style="font-weight:700">{{ order.driver.user.get_full_name|default:order.driver.user.username }}</div>
+                        <div style="color:var(--muted); font-size:0.85rem">⭐ {{ order.driver.rating|floatformat:1 }} ·  {{ order.driver.user.phone }}</div>
+                        {% if driver_car %}
+                        <div style="color:var(--muted); font-size:0.82rem; margin-top:0.2rem">
+                            {{ driver_car.brand }} {{ driver_car.model }} · {{ driver_car.plate_number }}{% if driver_car.color %} · {{ driver_car.color }}{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="info-card" style="text-align:center; color:var(--muted)">
+                <div style="font-size:2rem; margin-bottom:0.5rem"></div>
+                <div>Ищем водителя...</div>
+                <div style="font-size:0.8rem; margin-top:0.3rem">Страница обновляется автоматически</div>
+            </div>
+            {% endif %}
+
+            {% if order.status == 'created' %}
+            <form method="post" action="{% url 'cancel_order' order.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" style="width:100%; justify-content:center" onclick="return confirm('Отменить заказ?')">
+                    Отменить заказ
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Карта -->
+        <div class="map-wrap">
+            {% if order.pickup_lat and order.dest_lat %}
+                <div id="map"></div>
+            {% else %}
+                <div class="map-no-coords">
+                    <div style="font-size:3rem; opacity:0.3"></div>
+                    <div style="font-weight:600; color:var(--text)">Карта недоступна</div>
+                    <div style="font-size:0.82rem">
+                        Адреса введены без выбора из подсказок — координаты не сохранились.
+                        При следующем заказе выбирайте адрес из выпадающего списка.
+                    </div>
+                </div>
+            {% endif %}
+            <div style="padding:0.8rem 1rem; border-top:1px solid var(--border); font-size:0.8rem; color:var(--muted)" id="mapStatus">
+                 Карта маршрута
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+{% if order.pickup_lat and order.dest_lat %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey=074ca56e-4256-49f2-8c24-136e0fd940d1&lang=ru_RU"></script>
+<script>
+const ORDER_ID = {{ order.id }};
+const ORDER_STATUS = '{{ order.status }}';
+const PICKUP_LAT = parseFloat("{{ order.pickup_lat }}".replace(',', '.'));
+const PICKUP_LON = parseFloat("{{ order.pickup_lon }}".replace(',', '.'));
+const DEST_LAT = parseFloat("{{ order.dest_lat }}".replace(',', '.'));
+const DEST_LON = parseFloat("{{ order.dest_lon }}".replace(',', '.'));
+let myMap, driverMark;
+
+ymaps.ready(() => {
+    myMap = new ymaps.Map('map', {
+        center: [PICKUP_LAT, PICKUP_LON],
+        zoom: 12,
+        controls: ['zoomControl']
+    });
+    myMap.geoObjects.add(new ymaps.Placemark(
+        [PICKUP_LAT, PICKUP_LON],
+        { balloonContent: ' Место подачи' },
+        { preset: 'islands#greenDotIcon' }
+    ));
+    myMap.geoObjects.add(new ymaps.Placemark(
+        [DEST_LAT, DEST_LON],
+        { balloonContent: ' Назначение' },
+        { preset: 'islands#redDotIcon' }
+    ));
+    ymaps.route([[PICKUP_LAT, PICKUP_LON], [DEST_LAT, DEST_LON]], { routingMode: 'auto' }).then(route => {
+        route.getPaths().options.set({ strokeColor: '#f5c518', strokeWidth: 4, opacity: 0.8 });
+        myMap.geoObjects.add(route);
+        myMap.setBounds(route.getBounds(), { checkZoomRange: true, zoomMargin: 50 });
+    });
+    if (['assigned', 'on_the_way'].includes(ORDER_STATUS)) {
+        trackDriver(); setInterval(trackDriver, 8000);
+    }
+    if (ORDER_STATUS === 'created') {
+        setInterval(() => {
+            fetch('/api/driver-location/' + ORDER_ID + '/').then(r => r.json()).then(d => {
+                if (d.status && d.status !== 'created') location.reload();
+            });
+        }, 6000);
+    }
+});
+
+async function trackDriver() {
+    try {
+        const d = await (await fetch('/api/driver-location/' + ORDER_ID + '/')).json();
+        if (d.lat && d.lon) {
+            const coords = [d.lat, d.lon];
+            if (driverMark) driverMark.geometry.setCoordinates(coords);
+            else {
+                driverMark = new ymaps.Placemark(coords,
+                    { balloonContent: ' ' + d.driver_name },
+                    { preset: 'islands#blueCarIcon' }
+                );
+                myMap.geoObjects.add(driverMark);
+            }
+            document.getElementById('mapStatus').textContent =
+                ' ' + d.driver_name + ' ·  ' + d.driver_phone + ' ·  ' + d.rating;
+        }
+        if (d.status && d.status !== ORDER_STATUS) setTimeout(() => location.reload(), 1000);
+    } catch(e) {}
+}
+</script>
+{% endif %}
+{% endblock %}

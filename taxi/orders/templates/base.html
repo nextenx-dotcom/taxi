@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Taxi{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Тёмная тема (по умолчанию) ── */
+        [data-theme="dark"] {
+            --black: #0a0a0a;
+            --dark: #111111;
+            --card: #1a1a1a;
+            --border: #2a2a2a;
+            --yellow: #f5c518;
+            --yellow-dark: #d4a017;
+            --text: #e8e8e8;
+            --muted: #888;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --radius: 12px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        /* ── Светлая тема ── */
+        [data-theme="light"] {
+            --black: #f5f5f5;
+            --dark: #ffffff;
+            --card: #ffffff;
+            --border: #e0e0e0;
+            --yellow: #d4a017;
+            --yellow-dark: #b8860b;
+            --text: #1a1a1a;
+            --muted: #666;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --info: #2563eb;
+            --radius: 12px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: var(--black);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ── NAV ── */
+        .navbar { background: var(--dark); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); transition: background 0.3s, border-color 0.3s; }
+        .nav-brand { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--yellow); letter-spacing: 2px; text-decoration: none; }
+        .nav-brand span { color: var(--text); }
+        .nav-links { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+        .nav-links a, .nav-links button { color: var(--muted); text-decoration: none; padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500; border: none; background: none; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .nav-links a:hover, .nav-links button:hover { color: var(--text); background: var(--border); }
+        .nav-primary { background: var(--yellow) !important; color: #000 !important; font-weight: 700 !important; }
+        .nav-primary:hover { background: var(--yellow-dark) !important; }
+        .nav-dispatcher { background: rgba(59,130,246,0.15) !important; color: #3b82f6 !important; border: 1px solid rgba(59,130,246,0.3) !important; font-weight: 700 !important; }
+        .nav-badge { display: inline-flex; align-items: center; justify-content: center; background: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; font-weight: 700; margin-left: 4px; }
+
+        /* ── Переключатель темы ── */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .theme-toggle:hover { border-color: var(--yellow); }
+        .theme-toggle .toggle-track {
+            width: 36px; height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.3s;
+        }
+        [data-theme="light"] .theme-toggle .toggle-track { background: var(--yellow); }
+        .theme-toggle .toggle-thumb {
+            width: 16px; height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: left 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        [data-theme="light"] .theme-toggle .toggle-thumb { left: 18px; }
+        .theme-icon { font-size: 14px; line-height: 1; }
+
+        /* ── LAYOUT ── */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+        .page { padding: 2.5rem 0; }
+        main { flex: 1; }
+
+        /* ── CARDS ── */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); transition: background 0.3s, border-color 0.3s; }
+        .card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 1.2rem; }
+
+        /* ── BUTTONS ── */
+        .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.3rem; border-radius: 8px; font-family: 'Manrope', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+        .btn-primary { background: var(--yellow); color: #000; }
+        .btn-primary:hover { background: var(--yellow-dark); transform: translateY(-1px); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { opacity: 0.85; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { opacity: 0.85; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+        .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+        .btn-lg { padding: 0.85rem 2rem; font-size: 1rem; }
+
+        /* ── FORMS ── */
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; background: var(--dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.7rem 1rem; font-family: 'Manrope', sans-serif; font-size: 0.95rem; transition: border-color 0.2s, background 0.3s; outline: none; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(245,197,24,0.1); }
+        .error-text { color: var(--danger); font-size: 0.8rem; margin-top: 0.3rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        /* ── ALERTS ── */
+        .alert { padding: 0.85rem 1.2rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 500; }
+        .alert-success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--success); }
+        .alert-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); }
+        .alert-info { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: var(--info); }
+        .alert-warning { background: rgba(245,197,24,0.15); border: 1px solid rgba(245,197,24,0.3); color: var(--yellow); }
+
+        /* ── BADGES ── */
+        .badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-created { background: rgba(59,130,246,0.2); color: var(--info); }
+        .badge-assigned { background: rgba(245,197,24,0.2); color: var(--yellow); }
+        .badge-on_the_way { background: rgba(168,85,247,0.2); color: #a855f7; }
+        .badge-completed { background: rgba(34,197,94,0.2); color: var(--success); }
+        .badge-cancelled { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+        /* ── UTILS ── */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}.mt-3{margin-top:1.5rem}
+        .mb-2{margin-bottom:1rem}.mb-3{margin-bottom:1.5rem}
+        .text-muted { color: var(--muted); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+        /* ── УВЕДОМЛЕНИЯ ── */
+        .notif-wrap { position: relative; }
+        .notif-panel { display: none; position: absolute; right: 0; top: calc(100% + 8px); width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 200; }
+        .notif-panel.open { display: block; }
+        .notif-panel-header { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 0.9rem; }
+        .notif-item { padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; cursor: pointer; transition: background 0.15s; border-left: 3px solid var(--yellow); }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item:hover { background: var(--border); }
+        .notif-time { color: var(--muted); font-size: 0.75rem; margin-top: 0.2rem; }
+        .notif-empty { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+
+        #map, #driverMap { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
+
+        /* ── FOOTER ── */
+        .footer { background: var(--dark); border-top: 1px solid var(--border); margin-top: auto; transition: background 0.3s; }
+        .footer-top { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem 2rem; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 2.5rem; }
+        .footer-brand .logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--yellow); letter-spacing: 2px; text-decoration: none; display: block; margin-bottom: 0.7rem; }
+        .footer-brand .logo span { color: var(--text); }
+        .footer-brand p { color: var(--muted); font-size: 0.85rem; line-height: 1.6; max-width: 220px; }
+        .footer-col h4 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 1rem; }
+        .footer-col ul { list-style: none; }
+        .footer-col ul li { margin-bottom: 0.55rem; }
+        .footer-col ul li a { color: var(--muted); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
+        .footer-col ul li a:hover { color: var(--yellow); }
+        .footer-contact-item { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.7rem; font-size: 0.88rem; color: var(--muted); }
+        .footer-contact-item .icon { width: 32px; height: 32px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+        .footer-contact-item a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .footer-contact-item a:hover { color: var(--yellow); }
+        .footer-bottom { border-top: 1px solid var(--border); padding: 1.2rem 1.5rem; max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--muted); }
+        .footer-bottom a { color: var(--yellow); text-decoration: none; }
+        .call-order-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(245,197,24,0.12); border: 1px solid rgba(245,197,24,0.35); color: var(--yellow); padding: 0.45rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: all 0.2s; margin-top: 0.3rem; }
+        .call-order-btn:hover { background: rgba(245,197,24,0.22); }
+        .footer-social { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .social-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1rem; text-decoration: none; transition: border-color 0.2s; }
+        .social-btn:hover { border-color: var(--yellow); }
+
+        @media(max-width:900px){ .footer-top { grid-template-columns: 1fr 1fr; } }
+        @media(max-width:600px){ .footer-top { grid-template-columns: 1fr; gap: 1.5rem; } .footer-bottom { flex-direction: column; gap: 0.5rem; text-align: center; } .navbar { padding: 0 1rem; } .grid-2, .form-row { grid-template-columns: 1fr; } }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<nav class="navbar">
+    <a href="{% url 'index' %}" class="nav-brand">Ta<span>xi</span></a>
+    <div class="nav-links">
+        {% if user.is_authenticated %}
+            {% if user.role == 'passenger' %}
+                <a href="{% url 'passenger_dashboard' %}">Мои заказы</a>
+                <a href="{% url 'ticket_list' %}"> Поддержка</a>
+                <a href="{% url 'create_order' %}" class="nav-primary">+ Заказать такси</a>
+            {% elif user.role == 'driver' %}
+                <a href="{% url 'driver_dashboard' %}">Панель водителя</a>
+                <a href="{% url 'ticket_list' %}"> Поддержка</a>
+            {% elif user.role == 'dispatcher' or user.is_superuser %}
+                <a href="{% url 'dispatcher_dashboard' %}" class="nav-dispatcher"> Диспетчер</a>
+                <a href="{% url 'ticket_list' %}"> Обращения</a>
+            {% endif %}
+
+            <!-- Уведомления -->
+            <div class="notif-wrap">
+                <a href="#" onclick="toggleNotif(event)" style="text-decoration:none;color:var(--muted);padding:0.45rem 0.9rem;display:block;">
+                    <span class="nav-badge" id="notifCount" style="display:none"></span>
+                </a>
+                <div class="notif-panel" id="notifPanel">
+                    <div class="notif-panel-header">Уведомления</div>
+                    <div id="notifList"><div class="notif-empty">Загрузка...</div></div>
+                </div>
+            </div>
+
+            <span style="color:var(--muted);font-size:0.82rem">{{ user.get_full_name|default:user.username }}</span>
+            <form method="post" action="{% url 'logout' %}" style="display:inline">
+                {% csrf_token %}<button type="submit">Выйти</button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}">Войти</a>
+            <a href="{% url 'register_passenger' %}" class="nav-primary">Регистрация</a>
+        {% endif %}
+
+        <!-- Переключатель темы -->
+        <div class="theme-toggle" onclick="toggleTheme()" title="Переключить тему">
+            <span class="theme-icon" id="themeIcon"></span>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            <span class="theme-icon" id="themeIconSun"></span>
+        </div>
+    </div>
+</nav>
+
+{% if messages %}
+<div class="container" style="padding-top:1rem">
+    {% for msg in messages %}
+    <div class="alert alert-{% if msg.tags == 'error' %}error{% elif msg.tags == 'success' %}success{% elif msg.tags == 'warning' %}warning{% else %}info{% endif %}">{{ msg }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<main>{% block content %}{% endblock %}</main>
+
+<!-- ФУТЕР -->
+<footer class="footer">
+    <div class="footer-top">
+        <div class="footer-brand">
+            <a href="{% url 'index' %}" class="logo">Ta<span>xi</span></a>
+            <p>Сервис заказа такси с мгновенным подтверждением и отслеживанием на карте.</p>
+            <div class="footer-social">
+                <a href="#" class="social-btn" title="Telegram"></a>
+                <a href="#" class="social-btn" title="VK"></a>
+                <a href="#" class="social-btn" title="WhatsApp"></a>
+            </div>
+        </div>
+        <div class="footer-col">
+            <h4>Навигация</h4>
+            <ul>
+                <li><a href="{% url 'index' %}">Главная</a></li>
+                {% if user.is_authenticated %}
+                    {% if user.role == 'passenger' %}
+                    <li><a href="{% url 'passenger_dashboard' %}">Мои заказы</a></li>
+                    <li><a href="{% url 'create_order' %}">Заказать такси</a></li>
+                    {% elif user.role == 'driver' %}
+                    <li><a href="{% url 'driver_dashboard' %}">Панель водителя</a></li>
+                    {% elif user.role == 'dispatcher' %}
+                    <li><a href="{% url 'dispatcher_dashboard' %}">Панель диспетчера</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'ticket_list' %}">Мои обращения</a></li>
+                {% else %}
+                    <li><a href="{% url 'register_passenger' %}">Стать пассажиром</a></li>
+                    <li><a href="{% url 'register_driver' %}">Стать водителем</a></li>
+                    <li><a href="{% url 'login' %}">Войти</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Контакты</h4>
+            <div class="footer-contact-item"><div class="icon"></div><a href="mailto:support@taxi.ru">support@taxi.ru</a></div>
+            <div class="footer-contact-item"><div class="icon"></div><div><div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.1rem">Тех. поддержка</div><a href="tel:+78001234567" style="font-weight:700;color:var(--text)">+7 (800) 123-45-67</a></div></div>
+            <div class="footer-contact-item"><div class="icon"></div><div><div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.1rem">Заказ такси</div><a href="tel:+78009876543" style="font-weight:700;color:var(--yellow)">+7 (800) 987-65-43</a></div></div>
+            <a href="tel:+78009876543" class="call-order-btn"> Заказать по телефону</a>
+        </div>
+        <div class="footer-col">
+            <h4>Поддержка</h4>
+            <ul>
+                <li><a href="{% url 'ticket_create' %}">Написать диспетчеру</a></li>
+                <li><a href="{% url 'ticket_list' %}">Мои обращения</a></li>
+                <li><a href="tel:+78001234567"> +7 (800) 123-45-67</a></li>
+            </ul>
+            <div style="margin-top:1.2rem;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem">
+                <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Время работы</div>
+                <div style="font-size:0.85rem">Такси: <strong style="color:var(--success)">24/7</strong></div>
+                <div style="font-size:0.85rem;margin-top:0.2rem">Поддержка: <strong>Круглосуточно</strong></div>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 <a href="{% url 'index' %}">Taxi</a>. Все права защищены.</span>
+        <span>Дипломный проект</span>
+    </div>
+</footer>
+
+<script>
+// Переключение темы
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('taxigo-theme', newTheme);
+}
+
+// Восстановить тему из localStorage
+(function() {
+    const saved = localStorage.getItem('taxigo-theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+//Уведомления
+{% if user.is_authenticated %}
+function toggleNotif(e) {
+    e.preventDefault();
+    document.getElementById('notifPanel').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    const w = document.querySelector('.notif-wrap');
+    if (w && !w.contains(e.target)) document.getElementById('notifPanel').classList.remove('open');
+});
+let _notifs = [];
+async function loadNotifs() {
+    try {
+        const r = await fetch('/api/notifications/');
+        const d = await r.json();
+        _notifs = d.notifications;
+        const cnt = document.getElementById('notifCount');
+        const list = document.getElementById('notifList');
+        if (!_notifs.length) {
+            cnt.style.display = 'none';
+            list.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>';
+            return;
+        }
+        cnt.textContent = _notifs.length; cnt.style.display = 'inline-flex';
+        list.innerHTML = _notifs.map(n =>
+            `<div class="notif-item" onclick="markRead(${n.id},this)"><div>${n.message}</div><div class="notif-time">${n.created_at}</div></div>`
+        ).join('');
+    } catch(e) {}
+}
+async function markRead(id, el) {
+    await fetch('/api/notifications/'+id+'/read/', {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}});
+    el.remove(); _notifs = _notifs.filter(n=>n.id!==id);
+    if (!_notifs.length) { document.getElementById('notifCount').style.display='none'; document.getElementById('notifList').innerHTML='<div class="notif-empty">Нет новых уведомлений</div>'; }
+    else document.getElementById('notifCount').textContent = _notifs.length;
+}
+function getCookie(n) { return document.cookie.split(';').map(c=>c.trim().split('=')).find(([k])=>k===n)?.[1]||''; }
+loadNotifs();
+setInterval(loadNotifs, 10000);
+{% endif %}
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

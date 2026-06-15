@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% block title %}Панель водителя — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.driver-header{display:flex;align-items:center;gap:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:2rem}
+.driver-ava{width:68px;height:68px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.dot-on{background:var(--success)}.dot-off{background:var(--muted)}
+.dash-grid{display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start}
+.new-order{background:var(--card);border:2px solid rgba(245,197,24,0.4);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;position:relative;overflow:hidden}
+.new-order::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--yellow),transparent)}
+.new-badge{display:inline-flex;align-items:center;gap:0.4rem;background:var(--yellow);color:var(--black);padding:0.2rem 0.8rem;border-radius:20px;font-size:0.75rem;font-weight:700;margin-bottom:0.8rem}
+.active-box{background:linear-gradient(135deg,rgba(245,197,24,0.12),rgba(245,197,24,0.04));border:1px solid rgba(245,197,24,0.4);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem}
+.active-box h3{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;color:var(--yellow);margin-bottom:1rem}
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:sticky;top:80px}
+#driverMap{height:420px;width:100%;border-radius:0;border:none}
+.hist-row{display:flex;justify-content:space-between;align-items:center;padding:0.8rem 0;border-bottom:1px solid var(--border)}
+.hist-row:last-child{border-bottom:none}
+.cars-wrap{display:flex;flex-wrap:wrap;gap:0.7rem;margin-top:0.5rem}
+.car-chip{background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:0.45rem 0.9rem;font-size:0.84rem}
+.refresh-bar{background:rgba(245,197,24,0.08);border:1px solid rgba(245,197,24,0.2);border-radius:8px;padding:0.5rem 1rem;font-size:0.82rem;color:var(--muted);display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr}.map-panel{position:static}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+
+  <div class="driver-header">
+    <div class="driver-ava"></div>
+    <div style="flex:1">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:1px">{{ user.get_full_name|default:user.username }}</div>
+      <div style="color:var(--muted);font-size:0.88rem;margin-top:0.2rem">Лицензия: {{ profile.license_number }} ·  {{ profile.rating|floatformat:1 }}</div>
+      <div style="margin-top:0.5rem;font-size:0.85rem;font-weight:600">
+        {% if profile.verification_status == 'pending' %}<span style="color:var(--yellow)"> Ожидает верификации диспетчером</span>
+        {% elif profile.verification_status == 'rejected' %}<span style="color:var(--danger)"> Верификация отклонена{% if profile.verification_comment %}: {{ profile.verification_comment }}{% endif %}</span>
+        {% else %}<span class="dot {% if profile.is_active %}dot-on{% else %}dot-off{% endif %}"></span>{% if profile.is_active %}На линии{% else %}Не на линии{% endif %}{% endif %}
+      </div>
+    </div>
+    {% if profile.verification_status == 'verified' %}
+    <form method="post" action="{% url 'toggle_driver_status' %}">{% csrf_token %}
+      <button type="submit" class="btn {% if profile.is_active %}btn-ghost{% else %}btn-success{% endif %}">
+        {% if profile.is_active %}🔴 Уйти с линии{% else %}🟢 Выйти на линию{% endif %}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="dash-grid">
+    <div>
+      {% if active_order %}
+      <div class="active-box">
+        <h3> Активный заказ #{{ active_order.id }}</h3>
+        <div style="color:var(--muted);font-size:0.88rem;margin-bottom:0.8rem">
+          👤 {{ active_order.passenger.get_full_name|default:active_order.passenger.username }} ·  {{ active_order.passenger.phone }}
+        </div>
+        <div style="font-weight:600"> {{ active_order.pickup_address }}</div>
+        <div style="color:var(--muted);margin:0.3rem 0">↓</div>
+        <div style="color:var(--muted)"> {{ active_order.destination_address }}</div>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:1rem 0">
+          <span class="badge badge-{{ active_order.status }}">{{ active_order.get_status_display }}</span>
+          {% if active_order.price %}<span style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--yellow)">{{ active_order.price }} ₽</span>{% endif %}
+        </div>
+        <form method="post" action="{% url 'update_order_status' active_order.id %}">{% csrf_token %}
+          {% if active_order.status == 'assigned' %}<input type="hidden" name="status" value="on_the_way"><button type="submit" class="btn btn-primary"> Выехал к пассажиру</button>
+          {% elif active_order.status == 'on_the_way' %}<input type="hidden" name="status" value="completed"><button type="submit" class="btn btn-success"> Завершить поездку</button>{% endif %}
+        </form>
+      </div>
+      {% endif %}
+
+      <div class="card mb-3">
+        <div class="flex-between" style="margin-bottom:0.8rem">
+          <div class="card-title" style="margin-bottom:0">
+            Доступные заказы
+            <span id="orders-badge" style="background:var(--yellow);color:var(--black);border-radius:20px;padding:0.1rem 0.7rem;font-size:0.8rem;margin-left:0.5rem;font-weight:700;display:none">0</span>
+          </div>
+        </div>
+
+        <div class="refresh-bar">
+          <span> Обновление через <span id="countdown" style="color:var(--yellow);font-weight:700">10</span> сек.</span>
+          <button onclick="loadOrders(true)" class="btn btn-ghost btn-sm"> Обновить</button>
+        </div>
+
+        {% if profile.verification_status != 'verified' %}
+        <div class="alert alert-warning"> Вы не верифицированы. Дождитесь проверки диспетчером.</div>
+        {% elif active_order %}
+        <div class="alert alert-info">У вас есть активный заказ. Завершите его, чтобы принять новый.</div>
+        {% else %}
+        <!-- Обновление через AJAX -->
+        <div id="orders-list">
+          {% if available_orders %}
+            {% for order in available_orders %}
+            <div class="new-order">
+              <div class="new-badge"> Новый заказ #{{ order.id }}</div>
+              <div style="font-weight:600"> {{ order.pickup_address }}</div>
+              <div style="color:var(--muted);margin:0.3rem 0">↓</div>
+              <div style="color:var(--muted)"> {{ order.destination_address }}</div>
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:0.8rem 0">
+                {% if order.price %}<span style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--yellow)">{{ order.price }} ₽</span>{% endif %}
+                <span style="color:var(--muted);font-size:0.8rem">{{ order.created_at|date:"H:i" }}</span>
+              </div>
+              {% if order.comment %}<div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.8rem"> {{ order.comment }}</div>{% endif %}
+              <div style="display:flex;gap:0.8rem">
+                <a href="{% url 'accept_order' order.id %}" class="btn btn-primary"> Принять</a>
+                <a href="{% url 'decline_order' order.id %}" class="btn btn-ghost"> Пропустить</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:2rem;color:var(--muted)">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem;opacity:0.4"></div>
+            <div>Новых заказов нет</div>
+            {% if not profile.is_active %}<div style="font-size:0.82rem;margin-top:0.3rem;color:var(--danger)"> Вы не на линии</div>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="card mb-3">
+        <div class="flex-between mb-2">
+          <div class="card-title" style="margin-bottom:0">Мои автомобили</div>
+          <a href="{% url 'add_car' %}" class="btn btn-ghost btn-sm">+ Добавить</a>
+        </div>
+        {% if cars %}<div class="cars-wrap">{% for car in cars %}<div class="car-chip"> {{ car.brand }} {{ car.model }} · <strong>{{ car.plate_number }}</strong>{% if car.color %} · {{ car.color }}{% endif %}</div>{% endfor %}</div>
+        {% else %}<div style="color:var(--muted);font-size:0.9rem">Нет авто. <a href="{% url 'add_car' %}" style="color:var(--yellow)">Добавить </a></div>{% endif %}
+      </div>
+
+      {% if completed_orders %}
+      <div class="card">
+        <div class="card-title">Завершённые поездки</div>
+        {% for order in completed_orders %}
+        <div class="hist-row">
+          <div>
+            <div style="font-size:0.9rem;font-weight:600">#{{ order.id }} · {{ order.pickup_address }}</div>
+            <div style="font-size:0.8rem;color:var(--muted)">→ {{ order.destination_address }}</div>
+            <div style="font-size:0.75rem;color:var(--muted)">{{ order.created_at|date:"d.m.Y H:i" }}</div>
+          </div>
+          {% if order.price %}<div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--yellow)">{{ order.price }} ₽</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="map-panel">
+      <div id="driverMap"></div>
+      <div style="padding:0.8rem 1rem;border-top:1px solid var(--border);font-size:0.85rem;color:var(--muted)" id="locStatus">
+         Нажмите кнопку для обновления местоположения
+      </div>
+      <div style="padding:0 1rem 1rem">
+        <button onclick="shareLocation()" class="btn btn-primary btn-sm"> Обновить моё местоположение</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey=074ca56e-4256-49f2-8c24-136e0fd940d1&lang=ru_RU"></script>
+<script>
+const IS_VERIFIED = '{{ profile.verification_status }}' === 'verified';
+const HAS_ACTIVE  = {% if active_order %}true{% else %}false{% endif %};
+const CSRF = '{{ csrf_token }}';
+let prevCount = {{ available_orders|length }};
+let driverMap, driverPlacemark;
+
+ymaps.ready(() => {
+  driverMap = new ymaps.Map('driverMap', {
+    center: [60.9344, 76.5536], zoom: 12,
+    controls: ['zoomControl', 'geolocationControl']
+  });
+  {% if active_order and active_order.pickup_lat %}
+  const p = [parseFloat("{{ active_order.pickup_lat }}".replace(',','.')),
+             parseFloat("{{ active_order.pickup_lon }}".replace(',','.'))];
+  const d = [parseFloat("{{ active_order.dest_lat }}".replace(',','.')),
+             parseFloat("{{ active_order.dest_lon }}".replace(',','.'))];
+  ymaps.route([p,d],{routingMode:'auto'}).then(route=>{
+    route.getPaths().options.set({strokeColor:'#f5c518',strokeWidth:4,opacity:0.8});
+    driverMap.geoObjects.add(route);
+    driverMap.geoObjects.add(new ymaps.Placemark(p,{balloonContent:' Пассажир'},{preset:'islands#greenDotIcon'}));
+    driverMap.geoObjects.add(new ymaps.Placemark(d,{balloonContent:' Назначение'},{preset:'islands#redDotIcon'}));
+    driverMap.setBounds(route.getBounds(),{checkZoomRange:true,zoomMargin:50});
+  });
+  {% endif %}
+});
+
+// Геолокация
+function shareLocation() {
+  if (!navigator.geolocation) { alert('Геолокация не поддерживается'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    if (driverPlacemark) {
+      driverPlacemark.geometry.setCoordinates([lat, lon]);
+    } else {
+      driverPlacemark = new ymaps.Placemark([lat,lon],
+        {balloonContent:'Я здесь'},{preset:'islands#blueCarIcon'});
+      driverMap.geoObjects.add(driverPlacemark);
+    }
+    driverMap.setCenter([lat, lon], 14);
+    fetch('/driver/location/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({lat, lon})
+    }).then(() => {
+      document.getElementById('locStatus').textContent =
+        ' Местоположение обновлено: ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
+    });
+  }, () => alert('Разрешите доступ к геолокации в браузере'));
+}
+
+async function loadOrders(force = false) {
+  if (!IS_VERIFIED || HAS_ACTIVE) return;
+  try {
+    const r = await fetch('/api/orders-html/');
+    const data = await r.json();
+    const count = data.count || 0;
+
+    const badge = document.getElementById('orders-badge');
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline' : 'none';
+    }
+
+    if (force || count !== prevCount) {
+      prevCount = count;
+      const list = document.getElementById('orders-list');
+      if (list && data.html !== undefined) {
+        list.innerHTML = data.html;
+      }
+    }
+  } catch(e) {}
+}
+
+let sec = 10;
+const cdEl = document.getElementById('countdown');
+setInterval(() => {
+  sec--;
+  if (cdEl) cdEl.textContent = sec;
+  if (sec <= 0) {
+    sec = 10;
+    loadOrders();
+  }
+}, 1000);
+
+// Быстрая проверка каждые 3 сек
+setInterval(() => loadOrders(), 3000);
+
+// Геолокация каждые 30 сек
+setInterval(shareLocation, 30000);
+</script>
+{% endblock %}

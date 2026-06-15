@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Обращение #{{ ticket.id }} — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.chat-layout { display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem; align-items: start; }
+.ticket-info { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem; position: sticky; top: 80px; }
+.ticket-info h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 1rem; }
+.ti-row { display: flex; justify-content: space-between; padding: 0.45rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.ti-row:last-child { border-bottom: none; }
+.ti-row .lbl { color: var(--muted); }
+.chat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 600px; }
+.chat-header { padding: 1rem 1.3rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.chat-title { font-weight: 700; font-size: 1rem; }
+.chat-messages { flex: 1; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem; max-height: 500px; }
+.msg { display: flex; gap: 0.7rem; align-items: flex-end; }
+.msg.mine { flex-direction: row-reverse; }
+.msg-bubble { max-width: 70%; padding: 0.7rem 1rem; border-radius: 12px; font-size: 0.88rem; line-height: 1.5; }
+.msg.theirs .msg-bubble { background: var(--dark); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+.msg.mine .msg-bubble { background: var(--yellow); color: var(--black); border-bottom-right-radius: 3px; font-weight: 500; }
+.msg.dispatcher .msg-bubble { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.3); color: var(--text); border-bottom-left-radius: 3px; }
+.msg-sender { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.2rem; }
+.msg.mine .msg-sender { text-align: right; }
+.msg-time { font-size: 0.7rem; color: var(--muted); flex-shrink: 0; padding-bottom: 0.2rem; }
+.msg-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.avatar-user { background: var(--border); }
+.avatar-dispatcher { background: #3b82f6; }
+.avatar-driver { background: var(--yellow); }
+.chat-input { border-top: 1px solid var(--border); padding: 1rem; }
+.input-row { display: flex; gap: 0.7rem; align-items: flex-end; }
+.input-row textarea { flex: 1; background: var(--dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 0.7rem 1rem; font-family: inherit; font-size: 0.9rem; resize: none; outline: none; transition: border-color 0.2s; }
+.input-row textarea:focus { border-color: var(--yellow); }
+.closed-notice { text-align: center; padding: 1rem; color: var(--muted); font-size: 0.88rem; background: rgba(239,68,68,0.08); border-top: 1px solid var(--border); }
+@media(max-width:900px){ .chat-layout { grid-template-columns: 1fr; } .ticket-info { position: static; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:2px">
+                Обращение <span style="color:var(--yellow)">#{{ ticket.id }}</span>
+            </h1>
+            <span class="badge badge-{% if ticket.status == 'open' %}created{% elif ticket.status == 'in_progress' %}assigned{% else %}completed{% endif %}">
+                {{ ticket.get_status_display }}
+            </span>
+        </div>
+        <a href="{% url 'ticket_list' %}" class="btn btn-ghost">← Назад</a>
+    </div>
+
+    <div class="chat-layout">
+        <!-- Инфо о тикете -->
+        <div class="ticket-info">
+            <h3>Детали</h3>
+            <div class="ti-row"><span class="lbl">Тема</span><span style="text-align:right; font-weight:600">{{ ticket.subject }}</span></div>
+            <div class="ti-row"><span class="lbl">Категория</span><span>{{ ticket.get_category_display }}</span></div>
+            <div class="ti-row"><span class="lbl">Статус</span><span>{{ ticket.get_status_display }}</span></div>
+            <div class="ti-row"><span class="lbl">Создан</span><span>{{ ticket.created_at|date:"d.m.Y H:i" }}</span></div>
+            <div class="ti-row"><span class="lbl">Обновлён</span><span>{{ ticket.updated_at|date:"d.m.Y H:i" }}</span></div>
+            {% if ticket.assigned_to %}
+            <div class="ti-row"><span class="lbl">Диспетчер</span><span>{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}</span></div>
+            {% endif %}
+            {% if ticket.order %}
+            <div class="ti-row"><span class="lbl">Заказ</span><span>#{{ ticket.order.id }}</span></div>
+            {% endif %}
+
+            {% if user.role in 'dispatcher,admin' or user.is_superuser %}
+            <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.5rem">
+                {% if ticket.status != 'closed' %}
+                <form method="post" action="{% url 'ticket_close' ticket.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm" style="width:100%; justify-content:center"> Закрыть тикет</button>
+                </form>
+                {% else %}
+                <form method="post" action="{% url 'ticket_reopen' ticket.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm" style="width:100%; justify-content:center"> Переоткрыть</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Чат -->
+        <div class="chat-box">
+            <div class="chat-header">
+                <div>
+                    <div class="chat-title">{{ ticket.subject }}</div>
+                    <div style="color:var(--muted); font-size:0.8rem">
+                        {% if user.role in 'dispatcher,admin' %}
+                         {{ ticket.user.get_full_name|default:ticket.user.username }} ({{ ticket.user.get_role_display }})
+                        {% else %}
+                         Техническая поддержка Taxi
+                        {% endif %}
+                    </div>
+                </div>
+                <span style="font-size:0.8rem; color:{% if ticket.status == 'in_progress' %}var(--success){% else %}var(--muted){% endif %}">
+                    {% if ticket.status == 'in_progress' %}● В работе{% elif ticket.status == 'open' %}● Ожидает{% else %}● Закрыт{% endif %}
+                </span>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                {% if not ticket_messages %}
+                <div style="text-align:center; color:var(--muted); margin:auto; font-size:0.88rem">
+                    Начните диалог — напишите сообщение ниже
+                </div>
+                {% endif %}
+                {% for msg in ticket_messages %}
+                {% if msg.sender == user %}
+                <div class="msg mine" data-id="{{ msg.id }}">
+                    <div>
+                        <div class="msg-sender">Вы</div>
+                        <div class="msg-bubble">{{ msg.text }}</div>
+                    </div>
+                    <div class="msg-time">{{ msg.created_at|date:"H:i" }}</div>
+                </div>
+                {% elif msg.sender.role == 'dispatcher' %}
+                <div class="msg dispatcher" data-id="{{ msg.id }}">
+                    <div class="msg-avatar avatar-dispatcher"></div>
+                    <div>
+                        <div class="msg-sender">{{ msg.sender.get_full_name|default:msg.sender.username }} · Диспетчер</div>
+                        <div class="msg-bubble">{{ msg.text }}</div>
+                    </div>
+                    <div class="msg-time">{{ msg.created_at|date:"H:i" }}</div>
+                </div>
+                {% else %}
+                <div class="msg theirs" data-id="{{ msg.id }}">
+                    <div class="msg-avatar {% if msg.sender.role == 'driver' %}avatar-driver{% else %}avatar-user{% endif %}">
+                        {% if msg.sender.role == 'driver' %}{% else %}👤{% endif %}
+                    </div>
+                    <div>
+                        <div class="msg-sender">{{ msg.sender.get_full_name|default:msg.sender.username }}</div>
+                        <div class="msg-bubble">{{ msg.text }}</div>
+                    </div>
+                    <div class="msg-time">{{ msg.created_at|date:"H:i" }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if ticket.status != 'closed' %}
+            <div class="chat-input">
+                <form method="post" id="msgForm">
+                    {% csrf_token %}
+                    <div class="input-row">
+                        <textarea name="text" id="msgText" rows="2" placeholder="Введите сообщение..." required></textarea>
+                        <button type="submit" class="btn btn-primary" style="align-self:flex-end">Отправить </button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div class="closed-notice"> Обращение закрыто. Если проблема не решена — <a href="{% url 'ticket_create' %}" style="color:var(--yellow)">создайте новое</a>.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const TICKET_ID = {{ ticket.id }};
+const MY_ROLE = '{{ user.role }}';
+
+// Прокрутить вниз
+function scrollBottom() {
+    const el = document.getElementById('chatMessages');
+    el.scrollTop = el.scrollHeight;
+}
+scrollBottom();
+
+// Enter для отправки
+document.getElementById('msgText')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('msgForm').submit();
+    }
+});
+
+// Polling новых сообщений
+let lastId = {% if ticket_messages %}{{ ticket_messages.last.id|default:0 }}{% else %}0{% endif %};
+
+async function pollMessages() {
+    try {
+        const r = await fetch(`/api/tickets/${TICKET_ID}/messages/?after=${lastId}`);
+        const d = await r.json();
+        if (d.messages && d.messages.length > 0) {
+            const container = document.getElementById('chatMessages');
+            d.messages.forEach(msg => {
+                lastId = Math.max(lastId, msg.id);
+                const div = document.createElement('div');
+                div.dataset.id = msg.id;
+
+                if (msg.is_mine) {
+                    div.className = 'msg mine';
+                    div.innerHTML = `<div><div class="msg-sender">Вы</div><div class="msg-bubble">${escHtml(msg.text)}</div></div><div class="msg-time">${msg.created_at}</div>`;
+                } else if (msg.sender_role === 'dispatcher') {
+                    div.className = 'msg dispatcher';
+                    div.innerHTML = `<div class="msg-avatar avatar-dispatcher"></div><div><div class="msg-sender">${escHtml(msg.sender)} · Диспетчер</div><div class="msg-bubble">${escHtml(msg.text)}</div></div><div class="msg-time">${msg.created_at}</div>`;
+                } else {
+                    div.className = 'msg theirs';
+                    const ico = msg.sender_role === 'driver' ? '' : '';
+                    div.innerHTML = `<div class="msg-avatar">${ico}</div><div><div class="msg-sender">${escHtml(msg.sender)}</div><div class="msg-bubble">${escHtml(msg.text)}</div></div><div class="msg-time">${msg.created_at}</div>`;
+                }
+                container.appendChild(div);
+            });
+            scrollBottom();
+        }
+    } catch(e) {}
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+{% if ticket.status != 'closed' %}
+setInterval(pollMessages, 5000);
+{% endif %}
+</script>
+{% endblock %}

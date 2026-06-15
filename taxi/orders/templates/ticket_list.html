@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Мои обращения — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.ticket-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.5rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 1rem; text-decoration: none; color: inherit; transition: border-color 0.2s; }
+.ticket-card:hover { border-color: rgba(245,197,24,0.4); }
+.ticket-card.unread { border-left: 3px solid var(--yellow); }
+.ticket-subject { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; }
+.ticket-meta { color: var(--muted); font-size: 0.82rem; }
+.empty { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+.empty .icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.4; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:2px">
+                {% if user.role in 'dispatcher,admin' %}Все обращения{% else %}Мои <span style="color:var(--yellow)">обращения</span>{% endif %}
+            </h1>
+            <p class="text-muted">Чат с технической поддержкой</p>
+        </div>
+        {% if user.role not in 'dispatcher,admin' %}
+        <a href="{% url 'ticket_create' %}" class="btn btn-primary btn-lg">+ Новое обращение</a>
+        {% endif %}
+    </div>
+
+    {% if tickets %}
+        {% for ticket in tickets %}
+        <a href="{% url 'ticket_detail' ticket.id %}" class="ticket-card {% if ticket.unread_count_for_user %}unread{% endif %}">
+            <div style="font-size:1.8rem">
+                {% if ticket.category == 'order' %}
+                {% elif ticket.category == 'payment' %}
+                {% elif ticket.category == 'driver' %}
+                {% elif ticket.category == 'technical' %}
+                {% else %}{% endif %}
+            </div>
+            <div style="flex:1">
+                <div class="ticket-subject">
+                    {% if ticket.unread_count_for_user %}<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--danger); margin-right:4px; vertical-align:middle"></span>{% endif %}
+                    #{{ ticket.id }} — {{ ticket.subject }}
+                </div>
+                <div class="ticket-meta">
+                    {{ ticket.get_category_display }} ·
+                    {% if user.role in 'dispatcher,admin' %}{{ ticket.user.get_full_name|default:ticket.user.username }} ({{ ticket.user.get_role_display }}) · {% endif %}
+                    Обновлено: {{ ticket.updated_at|date:"d.m.Y H:i" }}
+                    {% if ticket.assigned_to %} ·  {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% endif %}
+                </div>
+            </div>
+            <span class="badge badge-{% if ticket.status == 'open' %}created{% elif ticket.status == 'in_progress' %}assigned{% else %}completed{% endif %}">
+                {{ ticket.get_status_display }}
+            </span>
+        </a>
+        {% endfor %}
+    {% else %}
+        <div class="empty">
+            <span class="icon"></span>
+            <h3 style="color:var(--text)">Обращений пока нет</h3>
+            <p>Если у вас возник вопрос — создайте обращение</p>
+            {% if user.role not in 'dispatcher,admin' %}
+            <a href="{% url 'ticket_create' %}" class="btn btn-primary mt-2">Создать обращение</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

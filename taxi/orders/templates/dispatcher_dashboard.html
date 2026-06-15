@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block title %}Панель диспетчера — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.disp-header { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05)); border: 1px solid rgba(59,130,246,0.3); border-radius: var(--radius); padding: 1.5rem 2rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem; }
+.disp-avatar { width: 64px; height: 64px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+.stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; line-height: 1; }
+.stat-label { color: var(--muted); font-size: 0.8rem; margin-top: 0.3rem; }
+.tabs { display: flex; gap: 0.3rem; background: var(--dark); padding: 0.3rem; border-radius: 10px; margin-bottom: 1.5rem; overflow-x: auto; }
+.tab { padding: 0.5rem 1.2rem; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--muted); font-family: inherit; white-space: nowrap; transition: all 0.2s; }
+.tab.active { background: var(--yellow); color: var(--black); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.driver-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem; margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; }
+.driver-card .info { flex: 1; }
+.driver-card .name { font-weight: 700; font-size: 1rem; }
+.driver-card .meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+.driver-card .cars { margin-top: 0.5rem; }
+.driver-card .car-chip { display: inline-block; background: var(--dark); border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.6rem; font-size: 0.78rem; margin: 0.2rem 0.2rem 0 0; }
+.driver-actions { display: flex; flex-direction: column; gap: 0.4rem; min-width: 120px; }
+.verify-form { display: flex; flex-direction: column; gap: 0.4rem; }
+.verify-form textarea { background: var(--dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.4rem 0.6rem; font-size: 0.8rem; font-family: inherit; resize: vertical; outline: none; width: 160px; }
+.verify-form textarea:focus { border-color: var(--yellow); }
+.badge-pending { background: rgba(245,197,24,0.2); color: var(--yellow); }
+.badge-verified { background: rgba(34,197,94,0.2); color: #4ade80; }
+.badge-rejected { background: rgba(239,68,68,0.15); color: #f87171; }
+.ticket-row { display: flex; align-items: center; gap: 1rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+.ticket-row:hover { background: rgba(255,255,255,0.02); }
+.ticket-row:last-child { border-bottom: none; }
+.ticket-subject { font-weight: 600; font-size: 0.9rem; }
+.ticket-meta { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+.unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-right: 4px; }
+.order-row { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.order-row:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+
+    <div class="disp-header">
+        <div class="disp-avatar"></div>
+        <div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:1px">Панель диспетчера</div>
+            <div style="color:var(--muted); font-size:0.9rem">{{ user.get_full_name|default:user.username }} · Тех. поддержка и верификация</div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-num" style="color:var(--yellow)">{{ stats.pending }}</div>
+            <div class="stat-label">Ожидают верификации</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" style="color:var(--success)">{{ stats.verified }}</div>
+            <div class="stat-label">Верифицировано водителей</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" style="color:var(--danger)">{{ stats.open_tickets }}</div>
+            <div class="stat-label">Открытых обращений</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" style="color:var(--info)">{{ stats.active_orders }}</div>
+            <div class="stat-label">Активных заказов</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ stats.total_orders }}</div>
+            <div class="stat-label">Всего заказов</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num">{{ stats.total_users }}</div>
+            <div class="stat-label">Пассажиров</div>
+        </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('verification')">
+             Верификация
+            {% if stats.pending %}<span style="background:var(--danger); color:white; border-radius:20px; padding:0 6px; font-size:0.75rem; margin-left:4px">{{ stats.pending }}</span>{% endif %}
+        </button>
+        <button class="tab" onclick="showTab('tickets')">
+             Обращения
+            {% if stats.open_tickets %}<span style="background:var(--danger); color:white; border-radius:20px; padding:0 6px; font-size:0.75rem; margin-left:4px">{{ stats.open_tickets }}</span>{% endif %}
+        </button>
+        <button class="tab" onclick="showTab('orders')"> Заказы</button>
+        <button class="tab" onclick="showTab('verified')"> Водители</button>
+    </div>
+
+    <!-- Верификация водителей -->
+    <div class="tab-panel active" id="tab-verification">
+        <div class="card">
+            <div class="card-title">Ожидают верификации</div>
+            {% if pending_drivers %}
+                {% for profile in pending_drivers %}
+                <div class="driver-card">
+                    <div style="font-size:2rem"></div>
+                    <div class="info">
+                        <div class="name">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+                        <div class="meta">
+                             {{ profile.user.phone }} ·
+                             {{ profile.license_number }} ·
+                            Зарегистрирован: {{ profile.user.date_joined|date:"d.m.Y" }}
+                        </div>
+                        <div class="cars">
+                            {% for car in profile.cars.all %}
+                            <span class="car-chip"> {{ car.brand }} {{ car.model }} · {{ car.plate_number }}{% if car.color %} · {{ car.color }}{% endif %}</span>
+                            {% empty %}
+                            <span style="color:var(--danger); font-size:0.8rem"> Нет автомобилей</span>
+                            {% endfor %}
+                        </div>
+                        <div style="margin-top:0.5rem">
+                            <a href="{% url 'dispatcher_driver_detail' profile.id %}" class="btn btn-ghost btn-sm">Подробнее </a>
+                        </div>
+                    </div>
+                    <div class="driver-actions">
+                        <form method="post" action="{% url 'verify_driver' profile.id %}" class="verify-form">
+                            {% csrf_token %}
+                            <textarea name="comment" placeholder="Комментарий (необязательно)"></textarea>
+                            <button type="submit" name="action" value="verify" class="btn btn-success btn-sm"> Верифицировать</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm"> Отклонить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align:center; padding:2rem; color:var(--muted)">
+                    <div style="font-size:2.5rem; margin-bottom:0.5rem; opacity:0.4"></div>
+                    <div>Нет водителей, ожидающих верификации</div>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if rejected_drivers %}
+        <div class="card mt-3">
+            <div class="card-title">Отклонённые водители</div>
+            {% for profile in rejected_drivers %}
+            <div class="driver-card">
+                <div style="font-size:2rem"></div>
+                <div class="info">
+                    <div class="name">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+                    <div class="meta"> {{ profile.user.phone }} · 🪪 {{ profile.license_number }}</div>
+                    {% if profile.verification_comment %}
+                    <div style="font-size:0.82rem; color:var(--danger); margin-top:0.3rem">Причина: {{ profile.verification_comment }}</div>
+                    {% endif %}
+                </div>
+                <div class="driver-actions">
+                    <form method="post" action="{% url 'verify_driver' profile.id %}">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="reset" class="btn btn-ghost btn-sm"> На пересмотр</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Обращения -->
+    <div class="tab-panel" id="tab-tickets">
+        <div class="card">
+            <div class="flex-between mb-3">
+                <div class="card-title" style="margin-bottom:0">Обращения пользователей</div>
+                <div style="display:flex; gap:0.5rem">
+                    <a href="{% url 'ticket_list' %}?status=open" class="btn btn-ghost btn-sm">Открытые</a>
+                    <a href="{% url 'ticket_list' %}?status=in_progress" class="btn btn-ghost btn-sm">В работе</a>
+                    <a href="{% url 'ticket_list' %}" class="btn btn-ghost btn-sm">Все</a>
+                </div>
+            </div>
+            {% if open_tickets %}
+                {% for ticket in open_tickets %}
+                <a href="{% url 'ticket_detail' ticket.id %}" style="text-decoration:none; color:inherit; display:block">
+                    <div class="ticket-row">
+                        <div style="flex:1">
+                            <div class="ticket-subject">
+                                {% if ticket.unread_count_for_dispatcher %}<span class="unread-dot"></span>{% endif %}
+                                #{{ ticket.id }} — {{ ticket.subject }}
+                            </div>
+                            <div class="ticket-meta">
+                                 {{ ticket.user.get_full_name|default:ticket.user.username }} ({{ ticket.user.get_role_display }}) ·
+                                {{ ticket.get_category_display }} ·
+                                {{ ticket.updated_at|date:"d.m.Y H:i" }}
+                                {% if ticket.assigned_to %} ·  {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% endif %}
+                            </div>
+                        </div>
+                        <span class="badge badge-{% if ticket.status == 'open' %}created{% elif ticket.status == 'in_progress' %}assigned{% else %}completed{% endif %}">
+                            {{ ticket.get_status_display }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div style="text-align:center; padding:2rem; color:var(--muted)">Нет открытых обращений</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Заказы -->
+    <div class="tab-panel" id="tab-orders">
+        <div class="card">
+            <div class="card-title">Последние заказы</div>
+            {% for order in all_orders %}
+            <div class="order-row">
+                <div style="flex:1">
+                    <div style="font-weight:600">#{{ order.id }} · {{ order.pickup_address }} → {{ order.destination_address }}</div>
+                    <div style="color:var(--muted); font-size:0.8rem">
+                         {{ order.passenger.get_full_name|default:order.passenger.username }}
+                        {% if order.driver %} ·  {{ order.driver.user.get_full_name|default:order.driver.user.username }}{% endif %}
+                        · {{ order.created_at|date:"d.m.Y H:i" }}
+                    </div>
+                </div>
+                <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+                {% if order.price %}<span style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; color:var(--yellow)">{{ order.price }} ₽</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Верифицированные водители -->
+    <div class="tab-panel" id="tab-verified">
+        <div class="card">
+            <div class="card-title">Верифицированные водители ({{ verified_drivers.count }})</div>
+            {% for profile in verified_drivers %}
+            <div class="driver-card">
+                <div style="font-size:2rem"></div>
+                <div class="info">
+                    <div class="name">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+                    <div class="meta">
+                         {{ profile.user.phone }} ·  {{ profile.license_number }} ·
+                        ⭐ {{ profile.rating|floatformat:1 }} ·
+                        <span style="color:{% if profile.is_active %}var(--success){% else %}var(--muted){% endif %}">
+                            {% if profile.is_active %}На линии{% else %}Не на линии{% endif %}
+                        </span>
+                    </div>
+                    {% if profile.verified_at %}
+                    <div style="color:var(--muted); font-size:0.78rem; margin-top:0.2rem">
+                        Верифицирован {{ profile.verified_at|date:"d.m.Y" }}
+                        {% if profile.verified_by %} · {{ profile.verified_by.get_full_name|default:profile.verified_by.username }}{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{% url 'dispatcher_driver_detail' profile.id %}" class="btn btn-ghost btn-sm">Детали →</a>
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align:center; padding:2rem; color:var(--muted)">Нет верифицированных водителей</div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function showTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

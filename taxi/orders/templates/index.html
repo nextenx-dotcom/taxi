@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Taxi — Быстрое такси{% endblock %}
+{% block extra_head %}
+<style>
+.hero { min-height: calc(100vh - 64px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 3rem 1.5rem; background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,197,24,0.07) 0%, transparent 70%); }
+.hero h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(4rem,10vw,8rem); line-height: 1; letter-spacing: 4px; margin-bottom: 1.5rem; }
+.hero h1 .y { color: var(--yellow); }
+.hero p { font-size: 1.1rem; color: var(--muted); max-width: 480px; margin-bottom: 2.5rem; }
+.hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.features { padding: 5rem 0; background: var(--dark); border-top: 1px solid var(--border); }
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 1.5rem; margin-top: 2.5rem; }
+.feat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.8rem 1.5rem; text-align: center; transition: border-color 0.2s, transform 0.2s; }
+.feat:hover { border-color: var(--yellow); transform: translateY(-4px); }
+.feat .icon { font-size: 2.2rem; margin-bottom: 0.8rem; display: block; }
+.feat h3 { font-weight: 700; margin-bottom: 0.4rem; }
+.feat p { color: var(--muted); font-size: 0.85rem; }
+.cta { padding: 5rem 0; text-align: center; }
+.cta h2 { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 2px; margin-bottom: 0.8rem; }
+.cta-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 680px; margin: 2rem auto 0; }
+.cta-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; text-decoration: none; color: var(--text); transition: all 0.2s; display: block; }
+.cta-card:hover { border-color: var(--yellow); transform: translateY(-3px); }
+.cta-card .icon { font-size: 2rem; margin-bottom: 0.8rem; display: block; }
+.cta-card h3 { font-weight: 700; margin-bottom: 0.3rem; }
+.cta-card p { color: var(--muted); font-size: 0.85rem; }
+@media(max-width:600px){ .cta-cards { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<section class="hero">
+    <div style="display:inline-block; background:rgba(245,197,24,0.15); border:1px solid rgba(245,197,24,0.3); color:var(--yellow); padding:0.3rem 1rem; border-radius:20px; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:2rem;"> Быстрая подача</div>
+    <h1>Такси <span class="y"></span></h1>
+    <p>Закажите такси за минуту. Надёжные водители, отслеживание на карте.</p>
+    <div class="hero-btns">
+        {% if user.is_authenticated %}
+            {% if user.role == 'passenger' %}
+                <a href="{% url 'create_order' %}" class="btn btn-primary btn-lg"> Заказать поездку</a>
+                <a href="{% url 'passenger_dashboard' %}" class="btn btn-ghost btn-lg">Мои заказы</a>
+            {% else %}
+                <a href="{% url 'driver_dashboard' %}" class="btn btn-primary btn-lg">Панель водителя</a>
+            {% endif %}
+        {% else %}
+            <a href="{% url 'register_passenger' %}" class="btn btn-primary btn-lg">Начать бесплатно</a>
+            <a href="{% url 'login' %}" class="btn btn-ghost btn-lg">Войти</a>
+        {% endif %}
+    </div>
+</section>
+<section class="features">
+    <div class="container">
+        <h2 style="font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:2px; text-align:center">Почему <span style="color:var(--yellow)">Taxi</span>?</h2>
+        <div class="feat-grid">
+            <div class="feat"><span class="icon"></span><h3>Мгновенный заказ</h3><p></p></div>
+            <div class="feat"><span class="icon"></span><h3>Карта в реальном времени</h3><p>Следите за водителем на картах прямо в браузере.</p></div>
+            <div class="feat"><span class="icon"></span><h3>Честная цена</h3><p>Цена рассчитывается автоматически до начала поездки.</p></div>
+            <div class="feat"><span class="icon"></span><h3>Безопасность</h3><p>Все водители проверены. История поездок сохраняется в профиле.</p></div>
+        </div>
+    </div>
+</section>
+<section class="cta">
+    <div class="container">
+        <h2>Присоединяйтесь</h2>
+        <p style="color:var(--muted)">Создайте аккаунт пассажира или зарегистрируйтесь как водитель</p>
+        <div class="cta-cards">
+            <a href="{% url 'register_passenger' %}" class="cta-card"><span class="icon"></span><h3>Я — пассажир</h3><p>Заказывайте такси быстро и удобно</p></a>
+            <a href="{% url 'register_driver' %}" class="cta-card"><span class="icon"></span><h3>Я — водитель</h3><p>Зарабатывайте на своём автомобиле</p></a>
+        </div>
+    </div>
+</section>
+{% endblock %}

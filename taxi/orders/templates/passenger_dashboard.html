@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Мои заказы — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+.stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; color: var(--yellow); line-height: 1; }
+.stat-label { color: var(--muted); font-size: 0.8rem; margin-top: 0.3rem; }
+.active-banner { background: linear-gradient(135deg, rgba(245,197,24,0.12), rgba(245,197,24,0.04)); border: 1px solid rgba(245,197,24,0.4); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+.active-banner h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 0.8rem; }
+.order-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+.order-row:last-child { border-bottom: none; }
+.order-route { flex: 1; }
+.order-from { font-weight: 600; font-size: 0.95rem; }
+.order-to { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+.order-price { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--yellow); }
+.empty { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+.empty .icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.4; }
+@media(max-width:600px){ .stats-row { grid-template-columns: 1fr 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:2px">Мои <span style="color:var(--yellow)">поездки</span></h1>
+            <p class="text-muted">Привет, {{ user.get_full_name|default:user.username }}!</p>
+        </div>
+        <a href="{% url 'create_order' %}" class="btn btn-primary btn-lg"> Новый заказ</a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card"><div class="stat-num">{{ total }}</div><div class="stat-label">Всего заказов</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--success)">{{ completed }}</div><div class="stat-label">Завершено</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--info)">{{ active_count }}</div><div class="stat-label">Активных</div></div>
+    </div>
+
+    {% if active_orders %}
+    {% for order in active_orders %}
+    <div class="active-banner">
+        <h3> Активный заказ #{{ order.id }}</h3>
+        <div class="order-from">{{ order.pickup_address }}</div>
+        <div class="order-to" style="margin-top:0.2rem; color:var(--muted)"> {{ order.destination_address }}</div>
+        <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:0.8rem">
+            <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+            {% if order.price %}<span style="color:var(--yellow); font-weight:700">{{ order.price }} ₽</span>{% endif %}
+            <a href="{% url 'order_detail' order.id %}" class="btn btn-primary btn-sm">Отслеживать </a>
+            {% if order.status == 'created' %}
+            <form method="post" action="{% url 'cancel_order' order.id %}" style="display:inline">
+                {% csrf_token %}<button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Отменить заказ?')">Отменить</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-title">История поездок</div>
+        {% if history_orders %}
+            {% for order in history_orders %}
+            <div class="order-row">
+                <div class="order-route">
+                    <div class="order-from">{{ order.pickup_address }}</div>
+                    <div class="order-to"> {{ order.destination_address }}</div>
+                    <div style="color:var(--muted); font-size:0.78rem; margin-top:0.3rem">{{ order.created_at|date:"d.m.Y H:i" }}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap">
+                    <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+                    {% if order.price %}<div class="order-price">{{ order.price }} ₽</div>{% endif %}
+                    <a href="{% url 'order_detail' order.id %}" class="btn btn-ghost btn-sm">Детали</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">
+                <span class="icon"></span>
+                <h3 style="color:var(--text)">Заказов пока нет</h3>
+                <p>Закажите первую поездку прямо сейчас!</p>
+                <a href="{% url 'create_order' %}" class="btn btn-primary mt-2">Заказать такси</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Новое обращение — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.create-wrap { max-width: 680px; margin: 0 auto; }
+.category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; margin-bottom: 1.5rem; }
+.cat-btn { background: var(--dark); border: 2px solid var(--border); border-radius: 10px; padding: 1rem 0.8rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+.cat-btn:hover, .cat-btn.selected { border-color: var(--yellow); background: rgba(245,197,24,0.08); }
+.cat-btn .icon { font-size: 1.8rem; display: block; margin-bottom: 0.4rem; }
+.cat-btn .label { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2.5rem; letter-spacing:2px">Новое <span style="color:var(--yellow)">обращение</span></h1>
+            <p class="text-muted">Опишите проблему — диспетчер ответит вам в чате</p>
+        </div>
+        <a href="{% url 'ticket_list' %}" class="btn btn-ghost">← Назад</a>
+    </div>
+
+    <div class="create-wrap">
+        <div class="card">
+            <form method="post" id="ticketForm">
+                {% csrf_token %}
+                <input type="hidden" name="category" id="categoryInput" value="general">
+
+                <div class="form-group">
+                    <label>Категория</label>
+                    <div class="category-grid">
+                        <div class="cat-btn selected" onclick="selectCat('general', this)">
+                            <span class="icon"></span><div class="label">Общий вопрос</div>
+                        </div>
+                        <div class="cat-btn" onclick="selectCat('order', this)">
+                            <span class="icon"></span><div class="label">Проблема с заказом</div>
+                        </div>
+                        <div class="cat-btn" onclick="selectCat('payment', this)">
+                            <span class="icon"></span><div class="label">Оплата</div>
+                        </div>
+                        <div class="cat-btn" onclick="selectCat('driver', this)">
+                            <span class="icon"></span><div class="label">Проблема с водителем</div>
+                        </div>
+                        <div class="cat-btn" onclick="selectCat('technical', this)">
+                            <span class="icon"></span><div class="label">Техническая</div>
+                        </div>
+                        <div class="cat-btn" onclick="selectCat('other', this)">
+                            <span class="icon"></span><div class="label">Другое</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Тема обращения</label>
+                    <input type="text" name="subject" placeholder="Кратко опишите проблему" required>
+                </div>
+
+                {% if orders %}
+                <div class="form-group">
+                    <label>Связанный заказ (необязательно)</label>
+                    <select name="order_id">
+                        <option value="">— не выбрано —</option>
+                        {% for order in orders %}
+                        <option value="{{ order.id }}">#{{ order.id }} · {{ order.pickup_address }} → {{ order.destination_address }} ({{ order.get_status_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Сообщение</label>
+                    <textarea name="first_message" rows="5" placeholder="Подробно опишите вашу проблему или вопрос..." required style="width:100%"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%; justify-content:center">
+                     Отправить обращение
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function selectCat(value, el) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('categoryInput').value = value;
+}
+</script>
+{% endblock %}

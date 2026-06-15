@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Добавить автомобиль — Taxi{% endblock %}
+{% block content %}
+<div style="min-height:calc(100vh - 130px); display:flex; align-items:center; justify-content:center; padding:2rem">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; padding:2.5rem; width:100%; max-width:460px">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:2px; color:var(--yellow); margin-bottom:0.3rem">Добавить авто</div>
+        <p style="color:var(--muted); font-size:0.9rem; margin-bottom:2rem">Добавьте данные вашего автомобиля</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group"><label>Марка</label><input type="text" name="brand" placeholder="Toyota" required></div>
+                <div class="form-group"><label>Модель</label><input type="text" name="model" placeholder="Solara" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Гос. номер</label><input type="text" name="plate_number" placeholder="А123ВГ77" required></div>
+                <div class="form-group"><label>Цвет</label><input type="text" name="color" placeholder="Белый"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.8rem">Добавить автомобиль</button>
+        </form>
+        <div class="mt-2"><a href="{% url 'driver_dashboard' %}" class="btn btn-ghost" style="width:100%; justify-content:center"> Назад</a></div>
+    </div>
+</div>
+{% endblock %}

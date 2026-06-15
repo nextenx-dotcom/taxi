@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Водитель {{ profile.user.username }} — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.profile-header { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start; }
+.profile-ava { width: 80px; height: 80px; border-radius: 50%; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; flex-shrink: 0; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.info-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; }
+.info-card h4 { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 0.8rem; }
+.info-row { display: flex; justify-content: space-between; padding: 0.45rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.info-row:last-child { border-bottom: none; }
+.info-row .lbl { color: var(--muted); }
+.verify-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+.verify-box h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--yellow); margin-bottom: 1rem; }
+.action-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.order-row { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.order-row:last-child { border-bottom: none; }
+@media(max-width:700px){ .info-grid { grid-template-columns: 1fr; } .profile-header { flex-direction: column; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="flex-between mb-3">
+        <h1 style="font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:2px">
+            Водитель: <span style="color:var(--yellow)">{{ profile.user.get_full_name|default:profile.user.username }}</span>
+        </h1>
+        <a href="{% url 'dispatcher_dashboard' %}" class="btn btn-ghost"> Назад</a>
+    </div>
+
+    <!-- Заголовок -->
+    <div class="profile-header">
+        <div class="profile-ava"></div>
+        <div style="flex:1">
+            <div style="font-size:1.3rem; font-weight:700">{{ profile.user.get_full_name|default:profile.user.username }}</div>
+            <div style="color:var(--muted); font-size:0.9rem; margin-top:0.3rem"> {{ profile.user.phone }} · @{{ profile.user.username }}</div>
+            <div style="margin-top:0.6rem; display:flex; gap:0.8rem; flex-wrap:wrap; align-items:center">
+                <span class="badge badge-{% if profile.verification_status == 'verified' %}completed{% elif profile.verification_status == 'rejected' %}cancelled{% else %}created{% endif %}">
+                    {{ profile.get_verification_status_display }}
+                </span>
+                <span style="font-size:0.85rem; color:{% if profile.is_active %}var(--success){% else %}var(--muted){% endif %}">
+                    ● {% if profile.is_active %}На линии{% else %}Не на линии{% endif %}
+                </span>
+                <span style="font-size:0.85rem">⭐ {{ profile.rating|floatformat:1 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <!-- Личные данные -->
+        <div class="info-card">
+            <h4>Личные данные</h4>
+            <div class="info-row"><span class="lbl">Имя</span><span>{{ profile.user.get_full_name|default:"—" }}</span></div>
+            <div class="info-row"><span class="lbl">Логин</span><span>{{ profile.user.username }}</span></div>
+            <div class="info-row"><span class="lbl">Телефон</span><span>{{ profile.user.phone }}</span></div>
+            <div class="info-row"><span class="lbl">Email</span><span>{{ profile.user.email|default:"—" }}</span></div>
+            <div class="info-row"><span class="lbl">Регистрация</span><span>{{ profile.user.date_joined|date:"d.m.Y H:i" }}</span></div>
+            <div class="info-row"><span class="lbl">Лицензия</span><span>{{ profile.license_number }}</span></div>
+        </div>
+
+        <!-- Автомобили -->
+        <div class="info-card">
+            <h4>Автомобили</h4>
+            {% for car in profile.cars.all %}
+            <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:0.2rem">
+                <div style="font-weight:600">{{ car.brand }} {{ car.model }}</div>
+                <div style="color:var(--muted); font-size:0.82rem">{{ car.plate_number }}{% if car.color %} · {{ car.color }}{% endif %}</div>
+            </div>
+            {% empty %}
+            <div style="color:var(--muted); font-size:0.9rem">Нет автомобилей</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Верификация -->
+    <div class="verify-box">
+        <h3>Верификация</h3>
+        {% if profile.verification_status == 'verified' %}
+        <div class="alert alert-success mb-2">
+             Верифицирован {{ profile.verified_at|date:"d.m.Y H:i" }}
+            {% if profile.verified_by %} · {{ profile.verified_by.get_full_name|default:profile.verified_by.username }}{% endif %}
+        </div>
+        {% elif profile.verification_status == 'rejected' %}
+        <div class="alert alert-error mb-2">
+             Отклонён{% if profile.verification_comment %}: {{ profile.verification_comment }}{% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-2"> Ожидает проверки</div>
+        {% endif %}
+
+        <form method="post" action="{% url 'verify_driver' profile.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Комментарий</label>
+                <textarea name="comment" rows="2" placeholder="Причина отклонения или примечание..." style="width:100%; background:var(--dark); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:0.6rem 0.9rem; font-family:inherit; outline:none; resize:vertical;">{{ profile.verification_comment|default:'' }}</textarea>
+            </div>
+            <div class="action-row">
+                {% if profile.verification_status != 'verified' %}
+                <button type="submit" name="action" value="verify" class="btn btn-success"> Верифицировать</button>
+                {% endif %}
+                {% if profile.verification_status != 'rejected' %}
+                <button type="submit" name="action" value="reject" class="btn btn-danger"> Отклонить</button>
+                {% endif %}
+                {% if profile.verification_status != 'pending' %}
+                <button type="submit" name="action" value="reset" class="btn btn-ghost"> На пересмотр</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- История поездок -->
+    {% if orders %}
+    <div class="card">
+        <div class="card-title">История поездок (последние {{ orders.count }})</div>
+        {% for order in orders %}
+        <div class="order-row">
+            <div style="flex:1">
+                <div style="font-weight:600">#{{ order.id }} · {{ order.pickup_address }}</div>
+                <div style="color:var(--muted); font-size:0.8rem">→ {{ order.destination_address }} · {{ order.created_at|date:"d.m.Y H:i" }}</div>
+            </div>
+            <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+            {% if order.price %}<span style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; color:var(--yellow)">{{ order.price }} ₽</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

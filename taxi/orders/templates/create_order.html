@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% block title %}Новый заказ — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.order-layout{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+.map-sticky{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:sticky;top:80px}
+#map{height:450px;width:100%;border-radius:0;border:none}
+.price-box{background:rgba(245,197,24,0.1);border:1px solid rgba(245,197,24,0.3);border-radius:10px;padding:1.2rem;margin-bottom:1.5rem;display:none}
+.price-box.show{display:block}
+.price-big{font-family:'Bebas Neue',sans-serif;font-size:2.5rem;color:var(--yellow);line-height:1}
+.price-detail{font-size:0.82rem;color:var(--muted);margin-top:0.4rem}
+.hint-wrap{position:relative}
+.hints{background:var(--dark);border:1px solid var(--border);border-radius:8px;position:absolute;z-index:1000;width:100%;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.hints.show{display:block}
+.hint-item{padding:0.65rem 1rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid var(--border);transition:background 0.15s;line-height:1.4}
+.hint-item:last-child{border-bottom:none}
+.hint-item:hover{background:var(--border)}
+.hint-item .hint-main{color:var(--text);font-weight:500}
+.hint-item .hint-sub{color:var(--muted);font-size:0.78rem;margin-top:2px}
+@media(max-width:900px){.order-layout{grid-template-columns:1fr}.map-sticky{position:static}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container page">
+  <div class="flex-between mb-3">
+    <div>
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;letter-spacing:2px">Новый <span style="color:var(--yellow)">заказ</span></h1>
+      <p class="text-muted">Укажите маршрут и мы найдём водителя</p>
+    </div>
+    <a href="{% url 'passenger_dashboard' %}" class="btn btn-ghost">← Назад</a>
+  </div>
+  <div class="order-layout">
+    <div class="card">
+      <form method="post" id="orderForm">
+        {% csrf_token %}
+        <input type="hidden" name="pickup_lat" id="pickup_lat">
+        <input type="hidden" name="pickup_lon" id="pickup_lon">
+        <input type="hidden" name="dest_lat" id="dest_lat">
+        <input type="hidden" name="dest_lon" id="dest_lon">
+        <input type="hidden" name="distance_km" id="distance_km">
+
+        <div class="form-group hint-wrap">
+          <label> Адрес подачи</label>
+          <input type="text" name="pickup_address" id="pickup_address"
+                 placeholder="Начните вводить улицу..." required autocomplete="off">
+          <div class="hints" id="pickupHints"></div>
+        </div>
+        <div class="form-group hint-wrap">
+          <label> Адрес назначения</label>
+          <input type="text" name="destination_address" id="dest_address"
+                 placeholder="Начните вводить улицу..." required autocomplete="off">
+          <div class="hints" id="destHints"></div>
+        </div>
+        <div class="form-group">
+          <label> Комментарий (необязательно)</label>
+          <textarea name="comment" rows="2" placeholder="Подъезд, этаж, пожелания..."></textarea>
+        </div>
+
+        <div class="price-box" id="priceBox">
+          <div style="color:var(--muted);font-size:0.8rem">Стоимость поездки</div>
+          <div class="price-big" id="priceDisplay">— ₽</div>
+          <div class="price-detail" id="priceDetail"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
+           Заказать такси
+        </button>
+      </form>
+    </div>
+
+    <div class="map-sticky">
+      <div id="map"></div>
+      <div style="padding:0.8rem 1rem;font-size:0.8rem;color:var(--muted);border-top:1px solid var(--border)">
+         Нижневартовск — укажите адреса для построения маршрута
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey=074ca56e-4256-49f2-8c24-136e0fd940d1&lang=ru_RU"></script>
+<script>
+// Центр Нижневартовска
+const CITY_CENTER = [60.9344, 76.5536];
+const CITY_NAME   = 'Нижневартовск';
+
+let myMap, pickupMark, destMark, routeObj;
+let pickupCoords = null, destCoords = null;
+let tariff = { price_per_km: 50, minimum_price: 150, boarding_fee: 0 };
+let suggestView = null; // Яндекс SuggestView
+
+//  Загрузка тарифа 
+async function loadTariff() {
+  try {
+    const r = await fetch('/api/tariff/');
+    tariff = await r.json();
+  } catch(e) {}
+}
+
+//  Инициализация карты
+ymaps.ready(async () => {
+  await loadTariff();
+
+  myMap = new ymaps.Map('map', {
+    center: CITY_CENTER,
+    zoom: 12,
+    controls: ['zoomControl', 'geolocationControl']
+  });
+
+  // Ограничиваем карту Нижневартовска
+  myMap.options.set('restrictMapArea', [
+    [60.5, 75.5],   // юго-запад
+    [61.5, 77.5]    // северо-восток
+  ]);
+
+  // Настройка автодополнения для обоих полей
+  setupSuggest('pickup_address', 'pickupHints', 'pickup');
+  setupSuggest('dest_address',   'destHints',   'dest');
+});
+
+// Автодополнение адресов через ymaps.suggest
+function setupSuggest(inputId, hintsId, type) {
+  const input = document.getElementById(inputId);
+  const hints = document.getElementById(hintsId);
+  let timer;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+
+    if (q.length < 2) {
+      hints.classList.remove('show');
+      hints.innerHTML = '';
+      return;
+    }
+
+    timer = setTimeout(() => {
+      // город к запросу
+      const query = `${CITY_NAME}, ${q}`;
+
+      ymaps.suggest(query, {
+        results: 7,
+        boundedBy: [[60.5, 75.5], [61.5, 77.5]],
+        strictBounds: false
+      }).then(items => {
+        hints.innerHTML = '';
+
+        if (!items || !items.length) {
+          hints.classList.remove('show');
+          return;
+        }
+
+        items.forEach(item => {
+          const fullName = item.displayName || item.value;
+          const shortName = fullName.replace(/^Россия,\s*/i, '')
+                                    .replace(/^Ханты-Мансийский автономный округ — Югра,\s*/i, '')
+                                    .replace(/^Нижневартовск,\s*/i, '');
+
+          const div = document.createElement('div');
+          div.className = 'hint-item';
+          div.innerHTML = `
+            <div class="hint-main">${shortName}</div>
+            <div class="hint-sub">${CITY_NAME}</div>
+          `;
+
+          div.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+
+            // получение координат
+            ymaps.geocode(item.value, { results: 1 }).then(res => {
+              const geo = res.geoObjects.get(0);
+              if (!geo) return;
+
+              const coords = geo.geometry.getCoordinates();
+              const address = shortName;
+
+              if (type === 'pickup') {
+                input.value = address;
+                document.getElementById('pickup_lat').value = coords[0];
+                document.getElementById('pickup_lon').value = coords[1];
+                pickupCoords = coords;
+                setMark('pickup', coords);
+              } else {
+                input.value = address;
+                document.getElementById('dest_lat').value = coords[0];
+                document.getElementById('dest_lon').value = coords[1];
+                destCoords = coords;
+                setMark('dest', coords);
+              }
+
+              hints.classList.remove('show');
+              hints.innerHTML = '';
+
+              if (pickupCoords && destCoords) buildRoute();
+            });
+          });
+
+          hints.appendChild(div);
+        });
+
+        hints.classList.add('show');
+      }).catch(() => {
+        geocodeFallback(q, hints, type, input);
+      });
+    }, 300);
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      hints.classList.remove('show');
+    }, 200);
+  });
+
+  input.addEventListener('focus', () => {
+    if (hints.children.length > 0) hints.classList.add('show');
+  });
+}
+
+function geocodeFallback(q, hintsEl, type, input) {
+  ymaps.geocode(`${CITY_NAME} ${q}`, {
+    results: 5,
+    boundedBy: [[60.5, 75.5], [61.5, 77.5]],
+    strictBounds: false
+  }).then(res => {
+    const items = res.geoObjects.toArray();
+    hintsEl.innerHTML = '';
+
+    if (!items.length) {
+      hintsEl.classList.remove('show');
+      return;
+    }
+
+    items.forEach(item => {
+      const fullName = item.getAddressLine();
+      const shortName = fullName.replace(/^Россия,\s*/i, '')
+                                .replace(/^Ханты-Мансийский автономный округ — Югра,\s*/i, '')
+                                .replace(/^Нижневартовск,\s*/i, '');
+      const coords = item.geometry.getCoordinates();
+
+      const div = document.createElement('div');
+      div.className = 'hint-item';
+      div.innerHTML = `<div class="hint-main">${shortName}</div><div class="hint-sub">${CITY_NAME}</div>`;
+
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        input.value = shortName;
+
+        if (type === 'pickup') {
+          document.getElementById('pickup_lat').value = coords[0];
+          document.getElementById('pickup_lon').value = coords[1];
+          pickupCoords = coords;
+          setMark('pickup', coords);
+        } else {
+          document.getElementById('dest_lat').value = coords[0];
+          document.getElementById('dest_lon').value = coords[1];
+          destCoords = coords;
+          setMark('dest', coords);
+        }
+
+        hintsEl.classList.remove('show');
+        if (pickupCoords && destCoords) buildRoute();
+      });
+
+      hintsEl.appendChild(div);
+    });
+
+    hintsEl.classList.add('show');
+  });
+}
+
+// Маркеры на карте
+function setMark(type, coords) {
+  if (type === 'pickup') {
+    if (pickupMark) myMap.geoObjects.remove(pickupMark);
+    pickupMark = new ymaps.Placemark(coords,
+      { balloonContent: ' Место подачи' },
+      { preset: 'islands#greenDotIcon' }
+    );
+    myMap.geoObjects.add(pickupMark);
+  } else {
+    if (destMark) myMap.geoObjects.remove(destMark);
+    destMark = new ymaps.Placemark(coords,
+      { balloonContent: ' Назначение' },
+      { preset: 'islands#redDotIcon' }
+    );
+    myMap.geoObjects.add(destMark);
+  }
+  myMap.setCenter(coords, 14);
+}
+
+// Построение маршрута
+function buildRoute() {
+  if (routeObj) myMap.geoObjects.remove(routeObj);
+
+  ymaps.route([pickupCoords, destCoords], { routingMode: 'auto' }).then(route => {
+    routeObj = route;
+    myMap.geoObjects.add(route);
+
+    const dist = route.getLength() / 1000;
+    const calculated = tariff.boarding_fee + dist * tariff.price_per_km;
+    const price = Math.max(tariff.minimum_price, Math.round(calculated * 100) / 100);
+
+    document.getElementById('distance_km').value = dist.toFixed(2);
+    document.getElementById('priceDisplay').textContent = Math.round(price) + ' ₽';
+    document.getElementById('priceDetail').innerHTML = '';
+    document.getElementById('priceBox').classList.add('show');
+    myMap.setBounds(route.getBounds(), { checkZoomRange: true, zoomMargin: 50 });
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация водителя — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.auth-wrap { min-height: calc(100vh - 130px); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.auth-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 520px; }
+.auth-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 2px; color: var(--yellow); margin-bottom: 0.3rem; }
+.auth-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.role-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; background: var(--dark); padding: 0.3rem; border-radius: 10px; }
+.role-tab { flex: 1; text-align: center; padding: 0.5rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-decoration: none; color: var(--muted); transition: all 0.2s; }
+.role-tab.active { background: var(--yellow); color: var(--black); }
+.section-sep { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-box">
+        <div class="auth-title">Стать водителем</div>
+        <p class="auth-sub">Зарегистрируйтесь и начните получать заказы</p>
+        <div class="role-tabs">
+            <a href="{% url 'register_passenger' %}" class="role-tab"> Пассажир</a>
+            <a href="{% url 'register_driver' %}" class="role-tab active"> Водитель</a>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="section-sep">Личные данные</div>
+            <div class="form-row">
+                <div class="form-group"><label>Имя</label><input type="text" name="first_name" value="{{ user_form.first_name.value|default:'' }}" placeholder="Иван" required></div>
+                <div class="form-group"><label>Фамилия</label><input type="text" name="last_name" value="{{ user_form.last_name.value|default:'' }}" placeholder="Иванов" required></div>
+            </div>
+            <div class="form-group"><label>Логин</label><input type="text" name="username" value="{{ user_form.username.value|default:'' }}" placeholder="driver_ivan" required>{% if user_form.username.errors %}<div class="error-text">{{ user_form.username.errors.0 }}</div>{% endif %}</div>
+            <div class="form-row">
+                <div class="form-group"><label>Телефон</label><input type="tel" name="phone" value="{{ user_form.phone.value|default:'' }}" placeholder="+7 900 000 00 00" required></div>
+                <div class="form-group"><label>Номер удостоверения</label><input type="text" name="license_number" value="{{ user_form.license_number.value|default:'' }}" placeholder="ВУ 1234567" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Пароль</label><input type="password" name="password1" placeholder="Минимум 8 символов" required>{% if user_form.password1.errors %}<div class="error-text">{{ user_form.password1.errors.0 }}</div>{% endif %}</div>
+                <div class="form-group"><label>Повторите пароль</label><input type="password" name="password2" placeholder="••••••••" required></div>
+            </div>
+            <div class="section-sep">Автомобиль</div>
+            <div class="form-row">
+                <div class="form-group"><label>Марка</label><input type="text" name="brand" value="{{ car_form.brand.value|default:'' }}" placeholder="Toyota" required></div>
+                <div class="form-group"><label>Модель</label><input type="text" name="model" value="{{ car_form.model.value|default:'' }}" placeholder="Solara" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Гос. номер</label><input type="text" name="plate_number" value="{{ car_form.plate_number.value|default:'' }}" placeholder="А123ВГ77" required></div>
+                <div class="form-group"><label>Цвет</label><input type="text" name="color" value="{{ car_form.color.value|default:'' }}" placeholder="Белый"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.8rem; margin-top:0.5rem">Зарегистрироваться </button>
+        </form>
+        <p style="text-align:center; margin-top:1.2rem; color:var(--muted); font-size:0.875rem">Уже есть аккаунт? <a href="{% url 'login' %}" style="color:var(--yellow)">Войти</a></p>
+    </div>
+</div>
+{% endblock %}

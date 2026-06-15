@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация пассажира — Taxi{% endblock %}
+{% block extra_head %}
+<style>
+.auth-wrap { min-height: calc(100vh - 130px); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.auth-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 480px; }
+.auth-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 2px; color: var(--yellow); margin-bottom: 0.3rem; }
+.auth-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.role-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; background: var(--dark); padding: 0.3rem; border-radius: 10px; }
+.role-tab { flex: 1; text-align: center; padding: 0.5rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-decoration: none; color: var(--muted); transition: all 0.2s; }
+.role-tab.active { background: var(--yellow); color: var(--black); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-box">
+        <div class="auth-title">Регистрация</div>
+        <p class="auth-sub">Создайте аккаунт пассажира</p>
+        <div class="role-tabs">
+            <a href="{% url 'register_passenger' %}" class="role-tab active"> Пассажир</a>
+            <a href="{% url 'register_driver' %}" class="role-tab"> Водитель</a>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group"><label>Имя</label><input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" placeholder="Иван" required>{% if form.first_name.errors %}<div class="error-text">{{ form.first_name.errors.0 }}</div>{% endif %}</div>
+                <div class="form-group"><label>Фамилия</label><input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" placeholder="Иванов"></div>
+            </div>
+            <div class="form-group"><label>Логин</label><input type="text" name="username" value="{{ form.username.value|default:'' }}" placeholder="ivan123" required>{% if form.username.errors %}<div class="error-text">{{ form.username.errors.0 }}</div>{% endif %}</div>
+            <div class="form-group"><label>Телефон</label><input type="tel" name="phone" value="{{ form.phone.value|default:'' }}" placeholder="+7 900 000 00 00" required></div>
+            <div class="form-group"><label>Пароль</label><input type="password" name="password1" placeholder="Минимум 8 символов" required>{% if form.password1.errors %}<div class="error-text">{{ form.password1.errors.0 }}</div>{% endif %}</div>
+            <div class="form-group"><label>Повторите пароль</label><input type="password" name="password2" placeholder="••••••••" required>{% if form.password2.errors %}<div class="error-text">{{ form.password2.errors.0 }}</div>{% endif %}</div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.8rem">Создать аккаунт </button>
+        </form>
+        <p style="text-align:center; margin-top:1.2rem; color:var(--muted); font-size:0.875rem">Уже есть аккаунт? <a href="{% url 'login' %}" style="color:var(--yellow)">Войти</a></p>
+    </div>
+</div>
+{% endblock %}
